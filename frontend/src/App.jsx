@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ImageUploader from './components/ImageUploader';
 import LoadingSpinner from './components/LoadingBar';
 import StylePreview from './components/StylePreview';
-import { uploadAndStylizeImage, downloadImage, downloadTextFile  } from './services/apiServices';
+import { uploadAndStylizeImage, downloadImage, downloadTextFile, checkPredictionStatus   } from './services/apiServices';
 import './App.css';
 
 const App = () => {
