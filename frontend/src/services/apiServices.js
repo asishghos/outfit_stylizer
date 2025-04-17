@@ -1,5 +1,5 @@
-const BASE_URL = 'http://localhost:5000/api';
-// const BASE_URL = 'https://outfitdesignserver-production.up.railway.app/api';
+// const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'https://outfitdesignserver-production.up.railway.app/api';
 
 /**
  * @param {string} imageData - Data URL of the uploaded image
