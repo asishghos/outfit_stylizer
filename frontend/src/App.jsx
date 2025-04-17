@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ImageUploader from './components/ImageUploader';
 import LoadingSpinner from './components/LoadingBar';
 import StylePreview from './components/StylePreview';
-import { uploadAndStylizeImage, checkPredictionStatus, downloadImage } from './services/apiServices';
+import { uploadAndStylizeImage, downloadImage, downloadTextFile  } from './services/apiServices';
 import './App.css';
 
 const App = () => {
@@ -23,13 +23,13 @@ const App = () => {
     };
 
     setUploadedImages(prev => [...prev, newImage].slice(0, 5));
-    setUploadedImage(dataUrl); // Set the most recently uploaded image for preview
+    setUploadedImage(dataUrl);
   };
-
+// un use
   const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
-      const newImages = files.slice(0, 5 - uploadedImages.length); // Limit to 5 total images
+      const newImages = files.slice(0, 5 - uploadedImages.length);
 
       Promise.all(
         newImages.map(file => {
@@ -46,7 +46,7 @@ const App = () => {
         })
       ).then(imageObjects => {
         setUploadedImages(prev => [...prev, ...imageObjects].slice(0, 5));
-        setUploadedImage(imageObjects[0]?.dataUrl); // Set the first new image for preview
+        setUploadedImage(imageObjects[0]?.dataUrl);
       });
     }
   };
@@ -79,14 +79,13 @@ const App = () => {
           }
         }));
 
-        // If it's the currently selected image, update the stylized preview
         if (uploadedImage === image.dataUrl) {
-          // Add any immediately available stylized images
           const availableImages = result.predictions
             .filter(p => p.output)
             .map(p => ({
               url: p.output,
-              occasion: p.occasion
+              occasion: p.occasion,
+              description: p.description
             }));
 
           if (availableImages.length > 0) {
@@ -132,22 +131,37 @@ const App = () => {
               const imageData = { ...prev[imageId] };
               imageData.predictions = imageData.predictions.map(p =>
                 p.predictionId === predictionId
-                  ? { ...p, isLoading: false, imageUrl: status.output, status: 'succeeded' }
+                  ? {
+                    ...p,
+                    isLoading: false,
+                    imageUrl: status.output,
+                    status: 'succeeded',
+                    description: status.description || p.description
+                  }
                   : p
               );
               return { ...prev, [imageId]: imageData };
             });
 
-            // Update stylized preview images if this is the current image
             if (uploadedImage === originalImageUrl) {
               setStylizedImages(prev => {
                 const exists = prev.some(img => img.occasion === occasion);
                 if (exists) {
                   return prev.map(img =>
-                    img.occasion === occasion ? { ...img, url: status.output } : img
+                    img.occasion === occasion
+                      ? {
+                        ...img,
+                        url: status.output,
+                        description: status.description || img.description
+                      }
+                      : img
                   );
                 } else {
-                  return [...prev, { url: status.output, occasion }];
+                  return [...prev, {
+                    url: status.output,
+                    occasion,
+                    description: status.description || "Style transformation complete."
+                  }];
                 }
               });
             }
@@ -184,7 +198,8 @@ const App = () => {
               originalImage: imageResult.originalImage.dataUrl,
               stylizedImage: pred.imageUrl,
               occasion: pred.occasion,
-              imageName: imageResult.originalImage.name
+              imageName: imageResult.originalImage.name,
+              description: pred.description || "Style transformation complete."
             });
           }
         }
@@ -219,7 +234,6 @@ const App = () => {
   const completedCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const totalExpected = uploadedImages.length * 3;
 
-  // Download a stylized image
   const handleDownload = (imageUrl, occasion, imageName) => {
     const baseName = imageName.substring(0, imageName.lastIndexOf('.')) || imageName;
     downloadImage(imageUrl, `${baseName}-${occasion.toLowerCase()}.jpg`);
@@ -236,7 +250,7 @@ const App = () => {
         </header>
 
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Upload Your Outfits</h2>
+          <h2 className="text-xl font-semibold mb-4">Upload Your Outfits (Max 5)</h2>
 
           {uploadedImages.length < 5 && (
             <div className="mb-6">
@@ -312,9 +326,8 @@ const App = () => {
             <h2 className="text-xl font-semibold mb-4">Style Preview</h2>
             <StylePreview
               originalImage={uploadedImage}
-              stylizedImages={stylizedImages.map(img => img.url)}
+              stylizedImages={stylizedImages}
               onDownload={(imageUrl, occasion) => {
-                // Find the image name from the current results
                 const currentImageId = Object.keys(results).find(
                   id => results[id].originalImage.dataUrl === uploadedImage
                 );
@@ -359,56 +372,61 @@ const App = () => {
               </div>
             </div>
 
-            {filteredResults.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredResults.map((result, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg overflow-hidden shadow">
-                    <div className="p-3 bg-gray-100 border-b">
-                      <h3 className="font-medium">{result.occasion} Style</h3>
-                      <p className="text-sm text-gray-500">{result.imageName}</p>
-                    </div>
+            {filteredResults.map((result, index) => (
+              <div key={index} className="bg-gray-50 rounded-lg overflow-hidden shadow">
+                <div className="p-3 bg-gray-100 border-b">
+                  <h3 className="font-medium">{result.occasion} Style</h3>
+                  <p className="text-sm text-gray-500">{result.imageName}</p>
+                </div>
 
-                    <div className="grid grid-cols-2">
-                      <div className="p-2">
-                        <p className="text-xs text-gray-500 mb-1">Original</p>
-                        <img
-                          src={result.originalImage}
-                          alt="Original outfit"
-                          className="w-full h-40 object-cover rounded"
-                        />
-                      </div>
-                      <div className="p-2">
-                        <p className="text-xs text-gray-500 mb-1">Stylized</p>
-                        <img
-                          src={result.stylizedImage}
-                          alt={`${result.occasion} style`}
-                          className="w-full h-40 object-cover rounded"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-gray-50 border-t flex gap-2">
-                      <button
-                        onClick={() => window.open(result.stylizedImage, '_blank')}
-                        className="flex-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                      >
-                        View Full Size
-                      </button>
-                      <button
-                        onClick={() => handleDownload(result.stylizedImage, result.occasion, result.imageName)}
-                        className="flex-1 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-                      >
-                        Download
-                      </button>
-                    </div>
+                <div className="grid grid-cols-2">
+                  <div className="p-2">
+                    <p className="text-xs text-gray-500 mb-1">Original</p>
+                    <img
+                      src={result.originalImage}
+                      alt="Original outfit"
+                      className="w-full h-40 object-cover rounded"
+                    />
                   </div>
-                ))}
+                  <div className="p-2">
+                    <p className="text-xs text-gray-500 mb-1">Stylized</p>
+                    <img
+                      src={result.stylizedImage}
+                      alt={`${result.occasion} style`}
+                      className="w-full h-40 object-cover rounded"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white">
+                  <div className="flex justify-between items-start">
+                    <h4 className="text-sm font-medium mb-1">Outfit Description:</h4>
+                    <button
+                      onClick={() => downloadTextFile(result.description, `${result.imageName}-${result.occasion.toLowerCase()}-description.txt`)}
+                      className="text-blue-600 text-xs hover:text-blue-800"
+                    >
+                      Download text
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-700">{result.description}</p>
+                </div>
+
+                <div className="p-3 bg-gray-50 border-t flex gap-2">
+                  <button
+                    onClick={() => window.open(result.stylizedImage, '_blank')}
+                    className="flex-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                  >
+                    View Full Size
+                  </button>
+                  <button
+                    onClick={() => handleDownload(result.stylizedImage, result.occasion, result.imageName)}
+                    className="flex-1 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Download Image
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="text-center p-8 bg-gray-50 rounded-lg">
-                <p>No results match the selected filter.</p>
-              </div>
-            )}
+            ))}
 
             <div className="mt-8 p-4 bg-gray-50 rounded-lg">
               <h3 className="text-lg font-semibold mb-2">About these styles:</h3>

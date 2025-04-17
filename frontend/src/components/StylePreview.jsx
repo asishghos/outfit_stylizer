@@ -1,7 +1,7 @@
 import React from 'react';
+import { downloadTextFile } from '../services/apiServices';
 
 const StylePreview = ({ originalImage, stylizedImages, onDownload }) => {
-  // Define occasions that correspond to the image order
   const occasions = ['Office', 'Party', 'Vacation'];
   
   const handleDownload = (imageUrl, occasion) => {
@@ -20,7 +20,6 @@ const StylePreview = ({ originalImage, stylizedImages, onDownload }) => {
   return (
     <div className="mt-4">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Original image column */}
         <div className="border rounded-lg overflow-hidden shadow-md">
           <div className="bg-gray-50 p-3">
             <h3 className="text-lg font-semibold text-center">Original</h3>
@@ -34,27 +33,38 @@ const StylePreview = ({ originalImage, stylizedImages, onDownload }) => {
           </div>
         </div>
 
-        {/* Stylized images */}
-        {stylizedImages.map((imageUrl, index) => (
+        {stylizedImages.map((image, index) => (
           <div key={index} className="border rounded-lg overflow-hidden shadow-md">
             <div className="bg-gray-50 p-3">
               <h3 className="text-lg font-semibold text-center">
-                {index < occasions.length ? occasions[index] : "Style"} Style
+                {image.occasion} Style
               </h3>
             </div>
             <div className="p-4">
               <img
-                src={imageUrl}
-                alt={`${index < occasions.length ? occasions[index] : "Style"} style`}
+                src={image.url}
+                alt={`${image.occasion} style`}
                 className="w-full h-64 object-cover rounded"
               />
             </div>
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-2">
+              <div className="flex justify-between items-start">
+                <h4 className="text-sm font-medium mb-1">Outfit Description:</h4>
+                <button
+                  onClick={() => downloadTextFile(image.description || `${image.occasion} style transformation.`, `outfit-${image.occasion.toLowerCase()}-description.txt`)}
+                  className="text-blue-600 text-xs hover:text-blue-800"
+                >
+                  Download text
+                </button>
+              </div>
+              <p className="text-sm text-gray-700 mb-3 h-20 overflow-y-auto">
+                {image.description || `${image.occasion} style transformation.`}
+              </p>
               <button
-                onClick={() => handleDownload(imageUrl, index < occasions.length ? occasions[index] : "Style")}
+                onClick={() => handleDownload(image.url, image.occasion)}
                 className="w-full py-2 bg-gray-800 text-white rounded hover:bg-gray-900 transition-colors"
               >
-                Download
+                Download Image
               </button>
             </div>
           </div>
